@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# ================================================================================
+#        SCF Ti - Tecnologia da Informação | Banner de Sessão SSH Corporativo
+# ================================================================================
+
+# ===== Identificação Institucional =====
+echo -e "\\e[1;32m╔══════════════════════════════════════════════════════════════════════════╗"
+echo -e "║                  \\e[1;37mSCF Ti - Tecnologia da Informação\\e[1;32m                       ║"
+echo -e "╠══════════════════════════════════════════════════════════════════════════╣"
+echo -e "║ \\e[1;34mResponsável:\\e[0m Salatiel                  \\e[1;34mContato:\\e[0m (16) 99208-8207         \\e[1;32m ║"
+echo -e "║ \\e[1;34mE-mail:\\e[0m      suporte@scfti.com.br                              \\e[1;32m          ║"
+echo -e "\\e[1;32m╚══════════════════════════════════════════════════════════════════════════╝\\e[0m"
+
+# ===== Informações do Ativo =====
+echo -e "\\n\\e[1;36m[ STATUS OPERACIONAL DO SERVIDOR ]\\e[0m"
+
+DISTRO=$(lsb_release -d | awk -F"\\t" '{print $2}')
+echo -e "\\e[1;33mSistema.........:\\e[0m $DISTRO"
+echo -e "\\e[1;33mHostname........:\\e[0m $(hostname)"
+echo -e "\\e[1;33mEndereço IP.....:\\e[0m $(hostname -I | awk '{print $1}')" "\\e[1;33mGW:\\e[0m $(ip route | awk '/default/ {print $3}')"
+#echo -e "\\e[1;33mGateway.........:\\e[0m $(ip route | awk '/default/ {print $3}')"
+echo -e "\\e[1;33mDNS.............:\\e[0m $(grep nameserver /etc/resolv.conf | awk '{print $2}' | paste -sd ',' -)"
+echo -e "\\e[1;33mUptime..........:\\e[0m $(uptime -p | cut -d ' ' -f2-)"
+echo -e "\\e[1;33mData/Hora.......:\\e[0m $(date '+%d/%m/%Y %H:%M:%S')"
+echo -e "\\e[1;33mKernel..........:\\e[0m $(uname -r)"
+echo -e "\\e[1;33mLoad Average....:\\e[0m $(uptime | awk -F'load average:' '{ print $2 }' | sed 's/^ //')"
+# ===== Informações de Disco =====
+if command -v df &> /dev/null; then
+    DISK_INFO=$(df -h / | awk 'NR==2 {print $4 " livre de " $2 " (" $5 " usado)"}')
+    echo -e "\e[1;33mEspaço em disco.: \e[0m$DISK_INFO"
+fi
+
+# ===== Informações de RAM =====
+if command -v free &> /dev/null; then
+    MEM_TOTAL=$(free -h | awk '/Mem:/ {print $2}')
+    MEM_USED=$(free -h | awk '/Mem:/ {print $3}')
+    MEM_FREE=$(free -h | awk '/Mem:/ {print $4}')
+    echo -e "\e[1;33mMemória RAM.....:\e[0m Usada: $MEM_USED | Livre: $MEM_FREE | Total: $MEM_TOTAL"
+fi
+echo -e "\\e[1;33mUsuários logados:\\e[0m $(who | wc -l)"
+
+if command -v apt &> /dev/null; then
+    UPDATES=$(apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l)
+    if [ "$UPDATES" -gt 0 ]; then
+        echo -e "\\n\\e[1;31m[ AVISO DE MANUTENÇÃO ]\\e[0m"
+        echo -e "\\e[1;31mExistem $UPDATES pacotes aguardando atualização via APT.\\e[0m"
+        echo -e "\\e[1;31mRecomenda-se atualização preventiva para mitigar riscos.\\e[0m"
+    else
+        echo -e "\\n\\e[1;32m[ SISTEMA ATUALIZADO ] Nenhuma atualização pendente.\\e[0m"
+    fi
+fi
+
+echo -e "\\n"

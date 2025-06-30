@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -e
+
+if [ -f "/etc/motd" ] && ! [ -L "/etc/motd" ]; then
+    echo "Limpando o conteúdo de /etc/motd para evitar conflitos."
+    > /etc/motd
+fi
+
+# Ativar o banner e desativar os outros
+chmod +x /etc/update-motd.d/00-scfti-banner
+find /etc/update-motd.d/ -type f ! -name "00-scfti-banner" -exec chmod -x {} \;
+
+# Configurar sshd_config
+if grep -q '^PrintMotd' /etc/ssh/sshd_config; then
+    sed -i 's/^PrintMotd.*/PrintMotd no/' /etc/ssh/sshd_config
+else
+    echo "PrintMotd no" >> /etc/ssh/sshd_config
+fi
+
+# Reload do SSH
+systemctl reload ssh 2>/dev/null || true
+
+# Remoção resiliente dos pacotes de MOTD padrão (se existirem)
+for script in /etc/update-motd.d/*; do
+    if [ -f "$script" ] && [ "$(basename "$script")" != "00-scfti-banner" ]; then
+        if chmod -x "$script" 2>/dev/null; then
+            echo "Desativado script MOTD padrão: $(basename "$script")"
+        fi
+    fi
+done
+
+exit 0
