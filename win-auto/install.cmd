@@ -62,7 +62,7 @@ if not exist "%ODT_DIR%\configuration.xml" (
 )
 
 :: Instala o Office
-start /wait "%ODT_DIR%\Setup.exe" /configure "%ODT_DIR%\configuration.xml"
+"%ODT_DIR%\Setup.exe" /configure "%ODT_DIR%\configuration.xml"
 if errorlevel 1 (
     echo [ERRO] Falha na instalacao do Office. >> "%LOG_FILE%"
     exit /b 5
