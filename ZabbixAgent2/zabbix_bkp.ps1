@@ -15,70 +15,6 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# ===== FAST DOWNLOAD (curl > BITS > HttpClient > IWR) =====
-function Get-FastFile {
-    param(
-        [Parameter(Mandatory)][string]$Url,
-        [Parameter(Mandatory)][string]$OutFile,
-        [int]$TimeoutMinutes = 15
-    )
-    $origPP = $ProgressPreference
-    $ProgressPreference = 'SilentlyContinue'   # elimina overhead da barra de progresso
-    try {
-        # 1) curl.exe (HTTP/2, redirecionamentos, retries)
-        $curl = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
-        if ($curl) {
-            $args = @('-L','--fail','--retry','3','--retry-delay','2','-o', $OutFile, $Url)
-            $p = Start-Process -FilePath $curl -ArgumentList $args -NoNewWindow -Wait -PassThru
-            if ($p.ExitCode -eq 0) { return }
-            Write-Verbose "curl.exe falhou com exitcode $($p.ExitCode)."
-        }
-
-        # 2) BITS (resumível, estável; priorize foreground para velocidade)
-        try {
-            Start-BitsTransfer -Source $Url -Destination $OutFile -Priority Foreground -ErrorAction Stop
-            return
-        } catch {
-            Write-Verbose "BITS indisponível/negado: $($_.Exception.Message)"
-        }
-
-        # 3) HttpClient streaming (rápido e com baixo overhead)
-        Add-Type -AssemblyName System.Net.Http | Out-Null
-        $handler = [System.Net.Http.HttpClientHandler]::new()
-        $handler.AutomaticDecompression = [System.Net.DecompressionMethods]::GZip -bor [System.Net.DecompressionMethods]::Deflate
-        $client  = [System.Net.Http.HttpClient]::new($handler)
-        $client.Timeout = [TimeSpan]::FromMinutes($TimeoutMinutes)
-
-        $resp = $client.GetAsync($Url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
-        $resp.EnsureSuccessStatusCode() | Out-Null
-
-        $fs = [System.IO.File]::Open($OutFile, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
-        try {
-            $resp.Content.CopyToAsync($fs).Result
-        } finally {
-            $fs.Close()
-            $client.Dispose()
-            $handler.Dispose()
-        }
-        return
-
-    } catch {
-        Write-Warning "Get-FastFile falhou: $($_.Exception.Message). Tentando Invoke-WebRequest."
-        # 4) Último fallback: IWR (com otimização no PS5)
-        try {
-            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            $params = @{ Uri = $Url; OutFile = $OutFile }
-            if ($PSVersionTable.PSVersion.Major -lt 6) { $params['UseBasicParsing'] = $true }  # acelera no PS 5.1
-            Invoke-WebRequest @params -TimeoutSec ($TimeoutMinutes*60)
-        } catch {
-            throw
-        }
-    } finally {
-        $ProgressPreference = $origPP
-    }
-}
-
-
 # --- Parâmetros padrão (baseline) ---
 $DefaultServer   = "192.0.0.203"
 $DefaultHostname = $env:COMPUTERNAME
@@ -110,7 +46,7 @@ Write-Host ""
 if (-not (Test-Path $MsiLocalPath)) {
     Write-Host "Baixando pacote MSI..." -ForegroundColor Cyan
     try {
-        Get-FastFile -Url $MsiUrl -OutFile $MsiLocalPath
+        Invoke-WebRequest -Uri $MsiUrl -OutFile $MsiLocalPath
     } catch {
         Write-Host "ERRO no download do MSI: $($_.Exception.Message)" -ForegroundColor Red
         exit 2
