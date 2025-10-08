@@ -1,11 +1,11 @@
 <# 
   Zabbix Agent 2 - Installer Orchestrator
   Autor: SCF Ti
-  Requisitos: PowerShell 5+, permiss√£o de Administrador, acesso HTTP/HTTPS
+  Requisitos: PowerShell 5+, permiss„o de Administrador, acesso HTTP/HTTPS
 #>
 
-# --- Guardrails de execu√ß√£o ---
-# Exigir eleva√ß√£o
+# --- Guardrails de execuÁ„o ---
+# Exigir elevaÁ„o
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
     ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "ERRO: Execute o PowerShell como Administrador." -ForegroundColor Red
@@ -15,7 +15,7 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# --- Par√¢metros padr√£o (baseline) ---
+# --- Par‚metros padr„o (baseline) ---
 $DefaultServer   = "192.0.0.203"
 $DefaultHostname = $env:COMPUTERNAME
 $MsiUrl          = "https://cdn.zabbix.com/zabbix/binaries/stable/7.4/7.4.3/zabbix_agent2-7.4.3-windows-amd64-openssl.msi"
@@ -31,9 +31,9 @@ function Read-WithDefault {
     if ([string]::IsNullOrWhiteSpace($answer)) { return $Default } else { return $answer }
 }
 
-# --- Menu de confirma√ß√£o/edi√ß√£o (com valores pr√©-preenchidos) ---
-Write-Host "===== Parametriza√ß√£o do Zabbix Agent 2 =====" -ForegroundColor Cyan
-$ServerInput   = Read-WithDefault -Prompt "Endere√ßo do Servidor" -Default $DefaultServer
+# --- Menu de confirmaÁ„o/ediÁ„o (com valores prÈ-preenchidos) ---
+Write-Host "===== ParametrizaÁ„o do Zabbix Agent 2 =====" -ForegroundColor Cyan
+$ServerInput   = Read-WithDefault -Prompt "EndereÁo do Servidor" -Default $DefaultServer
 $HostnameInput = Read-WithDefault -Prompt "Hostname"             -Default $DefaultHostname
 
 Write-Host ""
@@ -52,11 +52,11 @@ if (-not (Test-Path $MsiLocalPath)) {
         exit 2
     }
 } else {
-    Write-Host "MSI j√° presente em: $MsiLocalPath (reutilizando)" -ForegroundColor DarkYellow
+    Write-Host "MSI j· presente em: $MsiLocalPath (reutilizando)" -ForegroundColor DarkYellow
 }
 
-# --- Execu√ß√£o da instala√ß√£o silenciosa ---
-# Observa√ß√£o: propriedades aceitas pelo MSI do Zabbix: SERVER, SERVERACTIVE, HOSTNAME (entre outras).
+# --- ExecuÁ„o da instalaÁ„o silenciosa ---
+# ObservaÁ„o: propriedades aceitas pelo MSI do Zabbix: SERVER, SERVERACTIVE, HOSTNAME (entre outras).
 $msiArgs = @(
     "/i `"$MsiLocalPath`"",
     "/qn",
@@ -68,27 +68,27 @@ $msiArgs = @(
 ) -join ' '
 
 Write-Host "Instalando Zabbix Agent 2 via msiexec..." -ForegroundColor Cyan
-Write-Host "Log de instala√ß√£o: $LogPath" -ForegroundColor DarkGray
+Write-Host "Log de instalaÁ„o: $LogPath" -ForegroundColor DarkGray
 
 $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -PassThru -NoNewWindow
 if ($proc.ExitCode -ne 0) {
-    Write-Host "ERRO: msiexec retornou c√≥digo $($proc.ExitCode). Consulte o log." -ForegroundColor Red
+    Write-Host "ERRO: msiexec retornou cÛdigo $($proc.ExitCode). Consulte o log." -ForegroundColor Red
     exit $proc.ExitCode
 }
 
-# --- P√≥s-instala√ß√£o: valida√ß√£o de servi√ßo e *hardening* b√°sico de firewall (inbound 10050) ---
+# --- PÛs-instalaÁ„o: validaÁ„o de serviÁo e *hardening* b·sico de firewall (inbound 10050) ---
 $svcName = "Zabbix Agent 2"
 try {
     $svc = Get-Service -Name $svcName -ErrorAction Stop
     if ($svc.Status -ne 'Running') {
         Start-Service -Name $svcName
     }
-    Write-Host "Servi√ßo '$svcName' operacional: $((Get-Service $svcName).Status)" -ForegroundColor Green
+    Write-Host "ServiÁo '$svcName' operacional: $((Get-Service $svcName).Status)" -ForegroundColor Green
 } catch {
-    Write-Host "ATEN√á√ÉO: Servi√ßo '$svcName' n√£o localizado. Verifique o log de instala√ß√£o." -ForegroundColor Yellow
+    Write-Host "ATEN«√O: ServiÁo '$svcName' n„o localizado. Verifique o log de instalaÁ„o." -ForegroundColor Yellow
 }
 
-# Abrir porta 10050/TCP para coleta passiva (opcional; mantenha se voc√™ usa SERVER tamb√©m)
+# Abrir porta 10050/TCP para coleta passiva (opcional; mantenha se vocÍ usa SERVER tambÈm)
 try {
     if (-not (Get-NetFirewallRule -DisplayName "Zabbix Agent 2 (TCP 10050)" -ErrorAction SilentlyContinue)) {
         New-NetFirewallRule -DisplayName "Zabbix Agent 2 (TCP 10050)" `
@@ -96,14 +96,13 @@ try {
             -Program "$env:ProgramFiles\Zabbix Agent 2\zabbix_agent2.exe" | Out-Null
         Write-Host "Regra de firewall (10050/TCP) provisionada." -ForegroundColor Green
     } else {
-        Write-Host "Regra de firewall j√° existente." -ForegroundColor DarkYellow
+        Write-Host "Regra de firewall j· existente." -ForegroundColor DarkYellow
     }
 } catch {
     Write-Host "AVISO: Falha ao criar regra de firewall: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "Instala√ß√£o conclu√≠da com sucesso. *Time-to-value* garantido." -ForegroundColor Green
+Write-Host "InstalaÁ„o concluÌda com sucesso. *Time-to-value* garantido." -ForegroundColor Green
 Write-Host "Servidor: $ServerInput | Hostname: $HostnameInput"
 Write-Host "Log: $LogPath"
-
